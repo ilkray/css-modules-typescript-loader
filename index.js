@@ -8,6 +8,15 @@ const bannerMessage =
 
 const cssModuleExport = 'declare const cssExports: CssExports;\nexport = cssExports;\n';
 
+const cssModuleLazyExport = `interface CssLazyExports {
+  use: () => CssLazyExports;
+  unuse: () => void;
+  locals: CssExports;
+}
+declare const cssLazyExports: CssLazyExports;
+export = cssLazyExports;
+`;
+
 const getNoDeclarationFileError = ({ filename }) =>
   new Error(
     `Generated type declaration does not exist. Run webpack and commit the type declaration for '${filename}'`
@@ -55,7 +64,7 @@ module.exports = function(content, ...rest) {
   const { failed, success } = makeDoneHandlers(this.async(), content, rest);
 
   const filename = this.resourcePath;
-  const { mode = 'emit' } = loaderUtils.getOptions(this) || {};
+  const { mode = 'emit', lazyStyleLoader = false } = loaderUtils.getOptions(this) || {};
   if (!validModes.includes(mode)) {
     return failed(new Error(`Invalid mode option: ${mode}`));
   }
@@ -74,8 +83,9 @@ module.exports = function(content, ...rest) {
       cssModuleKeys.push(match[1]);
     }
   }
-
-  const cssModuleDefinition = `${bannerMessage}\n${cssModuleToInterface(cssModuleKeys)}\n${cssModuleExport}`;
+  
+  const cssModuleDefinition = `${bannerMessage}\n${cssModuleToInterface(cssModuleKeys)}\n`
+    + `${lazyStyleLoader ? cssModuleLazyExport : cssModuleExport}`;
 
   if (mode === 'verify') {
     read((err, fileContents) => {
